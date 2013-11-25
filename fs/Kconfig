@@ -266,6 +266,10 @@ config NFS_COMMON
 	bool
 	depends on NFSD || NFS_FS
 	default y
+	
+config ASYNC_FSYNC
+	bool "Asynchronous FSync"
+	default y
 
 source "net/sunrpc/Kconfig"
 source "fs/ceph/Kconfig"
