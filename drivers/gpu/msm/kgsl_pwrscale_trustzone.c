@@ -23,7 +23,7 @@
 #include "kgsl_pwrscale.h"
 #include "kgsl_device.h"
 
-#define TZ_GOVERNOR_PERFORMANCE 0
+#define TZ_GOVERNOR_PERFORMANCE 1
 #define TZ_GOVERNOR_ONDEMAND    1
 
 struct tz_priv {
