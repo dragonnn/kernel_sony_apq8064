@@ -821,8 +821,9 @@ static int cpufreq_add_dev_policy(unsigned int cpu,
 	unsigned int j;
 #ifdef CONFIG_HOTPLUG_CPU
 	struct cpufreq_governor *gov;
-
-	gov = __find_governor(per_cpu(cpufreq_policy_save, cpu).gov);
+	
+	//Android apps sets only governor for cpu 0, and I think it makes no sens to run cores on diffirent governor
+	gov = __find_governor(per_cpu(cpufreq_policy_save, 0).gov);
 	if (gov) {
 		policy->governor = gov;
 		pr_debug("Restoring governor %s for cpu %d\n",
