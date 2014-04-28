@@ -1994,9 +1994,9 @@ static int get_prop_batt_capacity(struct pm8921_chg_chip *chip)
 					DIS_BIT_CHG_SHUTDOWN_MASK);
 	}
 
-	if (percent_soc <= 10)
-		pr_warn_ratelimited("low battery charge = %d%%\n",
-						percent_soc);
+	//if (percent_soc <= 10)
+	//	pr_warn_ratelimited("low battery charge = %d%%\n",
+	//					percent_soc);
 
 	status = get_prop_batt_status(chip);
 
