@@ -2923,7 +2923,7 @@ config UPDATE_LCDC_LUT_STANDALONE
          help
            Set initial Qualcomm LCDC Look Up Table.
  
-+config LCD_KCAL_STANDALONE
+config LCD_KCAL_STANDALONE
          tristate "MSM generic LCDC Calibration"
          default m
          help
