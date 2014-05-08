@@ -414,6 +414,9 @@ struct synaptics_clearpad {
 	bool irq_pending;
 };
 
+int dt2w_switch = 0;
+int s2w_switch = 0;
+
 static void synaptics_funcarea_initialize(struct synaptics_clearpad *this);
 static void synaptics_clearpad_reset_power(struct synaptics_clearpad *this);
 
@@ -1338,7 +1341,7 @@ static int synaptics_clearpad_set_power(struct synaptics_clearpad *this)
 
 		dev_info(&this->pdev->dev, "power OFF\n");
 
-		if (this->easy_wakeup_config.gesture_enable) {
+		if (this->easy_wakeup_config.gesture_enable || dt2w_switch || s2w_switch) {
 			rc = synaptics_put_bit(this, SYNF(F11_2D, CTRL, 0x00),
 				XY_REPORTING_MODE_WAKEUP_GESTURE_MODE,
 				XY_REPORTING_MODE);
@@ -1816,6 +1819,7 @@ static int synaptics_clearpad_handle_gesture(struct synaptics_clearpad *this)
 
 	switch (wakeint) {
 	case XY_LPWG_STATUS_DOUBLE_TAP_DETECTED:
+		if(dt2w_switch==1)
 		rc = evgen_execute(this->input, this->evgen_blocks,
 					"double_tap");
 		break;
@@ -1824,6 +1828,7 @@ static int synaptics_clearpad_handle_gesture(struct synaptics_clearpad *this)
 					"single_swipe");
 		break;
 	case XY_LPWG_STATUS_TWO_SWIPE_DETECTED:
+		if(s2w_switch == 1)
 		rc = evgen_execute(this->input, this->evgen_blocks,
 					"two_swipe");
 		break;
@@ -1843,7 +1848,7 @@ static void synaptics_clearpad_process_irq(struct synaptics_clearpad *this)
 
 	LOCK(this);
 	if (!(this->active & SYN_ACTIVE_POWER)) {
-		if (this->easy_wakeup_config.gesture_enable &&
+		if ((this->easy_wakeup_config.gesture_enable || dt2w_switch || s2w_switch) &&
 			this->pdata->vreg_suspend) {
 			rc = this->pdata->vreg_suspend(0);
 			if (rc)
@@ -1913,7 +1918,7 @@ static void synaptics_clearpad_process_irq(struct synaptics_clearpad *this)
 	}
 
 	if (interrupt & this->pdt[SYN_F11_2D].irq_mask) {
-		if (this->easy_wakeup_config.gesture_enable
+		if ((this->easy_wakeup_config.gesture_enable || dt2w_switch || s2w_switch)
 		    && !(this->active & SYN_ACTIVE_POWER)) {
 			if (synaptics_clearpad_handle_gesture(this) == 0)
 				goto unlock; /* gesture handled */
@@ -2320,7 +2325,7 @@ static ssize_t synaptics_clearpad_state_show(struct device *dev,
 	else if (!strncmp(attr->attr.name, __stringify(fwstate), PAGE_SIZE))
 		snprintf(buf, PAGE_SIZE,
 			"%s", state_name[this->state]);
-	else if (!strncmp(attr->attr.name, __stringify(wakeup_gesture),
+	else if (!strncmp(attr->attr.name, __stringify(doubletap2wake),
 		PAGE_SIZE))
 		snprintf(buf, PAGE_SIZE, "%d",
 			this->easy_wakeup_config.gesture_enable);
@@ -2482,9 +2487,54 @@ static struct device_attribute clearpad_sysfs_attrs[] = {
 };
 
 static struct device_attribute clearpad_wakeup_gesture_attr =
-	__ATTR(wakeup_gesture, S_IRUGO | S_IWUSR,
+	__ATTR(doubletap2wake, S_IRUGO | S_IWUSR,
 				synaptics_clearpad_state_show,
 				synaptics_clearpad_wakeup_gesture_store);
+
+
+static ssize_t s2w_show(struct device *dev,
+     struct device_attribute *attr, char *buf)
+{
+  size_t count = 0;
+
+  count += sprintf(buf, "%d\n", s2w_switch);
+
+ return count;
+}
+
+static ssize_t s2w_dump(struct device *dev,
+    struct device_attribute *attr, const char *buf, size_t count)
+{
+  if (buf[0] >= '0' && buf[0] <= '2' && buf[1] == '\n')
+                if (s2w_switch != buf[0] - '0')
+            s2w_switch = buf[0] - '0';
+
+  return count;
+}
+
+static ssize_t dt2w_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+  size_t count = 0;
+  count += sprintf(buf, "%d\n", dt2w_switch);
+  return count;
+}
+
+static ssize_t dt2w_dump(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+  if (buf[0] >= '0' && buf[0] <= '1' && buf[1] == '\n')
+  if (dt2w_switch != buf[0] - '0') {
+    dt2w_switch = buf[0] - '0';
+  }
+  return count;
+}
+
+static DEVICE_ATTR(doubletap2wake, (S_IWUSR|S_IRUGO),
+  dt2w_show, dt2w_dump);
+  
+static DEVICE_ATTR(sweep2wake, (S_IWUSR|S_IRUGO),
+  s2w_show, s2w_dump);
+
+static struct kobject *android_touch_kobj;
 
 static int create_sysfs_entries(struct synaptics_clearpad *this)
 {
@@ -2500,6 +2550,11 @@ static int create_sysfs_entries(struct synaptics_clearpad *this)
 			break;
 		}
 	}
+	
+	android_touch_kobj = kobject_create_and_add("android_touch", NULL);
+	sysfs_create_file(android_touch_kobj, &dev_attr_sweep2wake.attr);
+	sysfs_create_file(android_touch_kobj, &dev_attr_doubletap2wake.attr);
+	
 	return rc;
 }
 
@@ -2509,6 +2564,10 @@ static void remove_sysfs_entries(struct synaptics_clearpad *this)
 
 	for (i = 0; i < ARRAY_SIZE(clearpad_sysfs_attrs); i++)
 		device_remove_file(&this->input->dev, &clearpad_sysfs_attrs[i]);
+		
+	sysfs_remove_file(android_touch_kobj, &dev_attr_sweep2wake.attr);
+	sysfs_remove_file(android_touch_kobj,&dev_attr_doubletap2wake.attr);
+	kobject_del(android_touch_kobj);
 }
 
 static int synaptics_clearpad_input_init(struct synaptics_clearpad *this)
@@ -2611,6 +2670,12 @@ static int synaptics_clearpad_resume(struct device *dev)
 
 	synaptics_funcarea_invalidate_all(this);
 	UNLOCK(this);
+	
+	if(dt2w_switch==1||s2w_switch==1)
+	{
+		printk("[Sweep2Wake]: Fixing any glitches");
+		synaptics_clearpad_reset_power(this);
+	}
 
 	rc = synaptics_clearpad_set_power(this);
 	return rc;
