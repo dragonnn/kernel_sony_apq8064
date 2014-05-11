@@ -42,9 +42,6 @@ __ATTR(_name, _mode, _show, _store)
 /* Master list of available policies */
 
 static struct kgsl_pwrscale_policy *kgsl_pwrscale_policies[] = {
-#ifdef CONFIG_MSM_SCM
-	&kgsl_pwrscale_policy_tz,
-#endif
 #ifdef CONFIG_MSM_SLEEP_STATS_DEVICE
 	&kgsl_pwrscale_policy_idlestats,
 #endif
@@ -52,6 +49,9 @@ static struct kgsl_pwrscale_policy *kgsl_pwrscale_policies[] = {
 	&kgsl_pwrscale_policy_msm,
 #endif
 	&kgsl_pwrscale_policy_conservative,
+#ifdef CONFIG_MSM_SCM
+	&kgsl_pwrscale_policy_tz,
+#endif
 	NULL
 };
 
