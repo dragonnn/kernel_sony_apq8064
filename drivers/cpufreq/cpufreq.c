@@ -719,7 +719,7 @@ cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 #ifdef CONFIG_CPU_VOLTAGE_TABLE
 define_one_global_rw(vdd_levels);
-cpufreq_freq_attr_rw(gpu_mv_table);
+define_one_global_rw(gpu_mv_table);
 #endif
 
 static struct attribute *default_attrs[] = {
